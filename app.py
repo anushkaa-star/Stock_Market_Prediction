@@ -340,33 +340,60 @@ st.sidebar.markdown("""
 # ─── Data & Feature Engineering ───────────────────────────────────────────────
 @st.cache_data
 def load_and_preprocess_data(ticker, days):
-    stock = yf.Ticker(ticker)
+    import yfinance as yf
+    import numpy as np
+
     symbol = "₹" if ticker.upper().endswith((".NS", ".BO")) else "$"
+
     try:
+        stock = yf.Ticker(ticker)
         df = stock.history(period=f"{days}d")
-        if df.empty: return None, "$"
-    except Exception: return None, "$"
+
+        # 🔥 Fallback if API fails or empty data
+        if df is None or df.empty:
+            st.warning("Using default data (AAPL)")
+            stock = yf.Ticker("AAPL")
+            df = stock.history(period="365d")
+
+    except Exception:
+        # 🔥 Fallback if error occurs
+        st.warning("API issue, loading default data (AAPL)")
+        stock = yf.Ticker("AAPL")
+        df = stock.history(period="365d")
+
+    # --- Basic columns ---
     df = df[['Open', 'High', 'Low', 'Close', 'Volume']]
+
+    # --- Feature Engineering ---
     df['5MA'] = df['Close'].rolling(window=5).mean()
     df['10MA'] = df['Close'].rolling(window=10).mean()
     df['Daily_Return'] = df['Close'].pct_change()
     df['Price_Range'] = df['High'] - df['Low']
     df['Volatility'] = df['Close'].rolling(window=5).std()
+
+    # RSI
     delta = df['Close'].diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
     rs = gain / loss.replace(0, np.nan)
     df['RSI'] = 100 - (100 / (1 + rs))
     df['RSI'] = df['RSI'].fillna(50)
+
+    # MACD
     exp1 = df['Close'].ewm(span=12, adjust=False).mean()
     exp2 = df['Close'].ewm(span=26, adjust=False).mean()
     df['MACD'] = exp1 - exp2
     df['Signal_Line'] = df['MACD'].ewm(span=9, adjust=False).mean()
+
+    # Bollinger Bands
     df['BB_MA'] = df['Close'].rolling(window=20).mean()
     df['BB_std'] = df['Close'].rolling(window=20).std()
     df['BB_Upper'] = df['BB_MA'] + (df['BB_std'] * 2)
     df['BB_Lower'] = df['BB_MA'] - (df['BB_std'] * 2)
+
+    # Target
     df['Target'] = np.where(df['Close'].shift(-1) > df['Close'], 1, 0)
+
     return df.dropna(), symbol
 
 
