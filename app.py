@@ -414,8 +414,11 @@ rf       = RandomForestClassifier(n_estimators=100, random_state=42)
 gb       = GradientBoostingClassifier(n_estimators=100, random_state=42)
 ada      = AdaBoostClassifier(n_estimators=100, random_state=42)
 lr       = LogisticRegression(random_state=42, max_iter=1000)
-ensemble = VotingClassifier(estimators=[('RF', rf), ('GB', gb), ('ADA', ada), ('LR', lr)], voting='soft')
-
+ensemble = VotingClassifier(
+    estimators=[('RF', rf), ('GB', gb), ('ADA', ada), ('LR', lr)],
+    voting='soft',
+    weights=[2, 3, 1, 1]
+)
 rf.fit(X_train_scaled, y_train)
 gb.fit(X_train_scaled, y_train)
 ada.fit(X_train_scaled, y_train)
