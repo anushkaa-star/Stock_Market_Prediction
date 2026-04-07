@@ -399,7 +399,7 @@ def load_and_preprocess_data(ticker, days):
     0.2 * ((df['Low'].shift(-1) - df['Low']) / df['Low'])
 )
 
-    df['Target'] = np.where(df['Price_Change'] > 0.015, 1, 0)
+    df['Target'] = np.where(df['Price_Change'] > 0.01, 1, 0)
 
     return df.dropna(), symbol
 
@@ -429,7 +429,6 @@ if data is None:
     st.error("Invalid ticker or connection issue. Check the symbol and try again.")
     st.stop()
 
-
 # --- ML Pipeline ---
 
 features = [
@@ -441,7 +440,7 @@ features = [
 X = data[features]
 y = data['Target']
 
-# Time-based split (correct)
+# Time-based split
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42, shuffle=False
 )
@@ -452,42 +451,25 @@ X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
 X_scaled = scaler.transform(X)
 
-# --- Models ---
-rf  = RandomForestClassifier(n_estimators=100, random_state=42)
+# --- Models (with balancing where possible) ---
+rf  = RandomForestClassifier(n_estimators=100, random_state=42, class_weight='balanced')
 gb  = GradientBoostingClassifier(n_estimators=100, random_state=42)
 ada = AdaBoostClassifier(n_estimators=100, random_state=42)
-lr  = LogisticRegression(random_state=42, max_iter=1000)
+lr  = LogisticRegression(random_state=42, max_iter=1000, class_weight='balanced')
 
-# --- Train individual models ---
+# --- Ensemble (FIXED weights for stability) ---
+ensemble = VotingClassifier(
+    estimators=[('RF', rf), ('GB', gb), ('ADA', ada), ('LR', lr)],
+    voting='soft',
+    weights=[2, 3, 2, 2]   # stable + slightly favor GB
+)
+
+# --- Train models ---
 rf.fit(X_train_scaled, y_train)
 gb.fit(X_train_scaled, y_train)
 ada.fit(X_train_scaled, y_train)
 lr.fit(X_train_scaled, y_train)
-
-# --- Compute dynamic weights ---
-from sklearn.metrics import accuracy_score
-
-rf_acc  = accuracy_score(y_test, rf.predict(X_test_scaled))
-gb_acc  = accuracy_score(y_test, gb.predict(X_test_scaled))
-ada_acc = accuracy_score(y_test, ada.predict(X_test_scaled))
-lr_acc  = accuracy_score(y_test, lr.predict(X_test_scaled))
-
-weights = [rf_acc, gb_acc, ada_acc, lr_acc]
-
-# Optional normalization (recommended)
-total = sum(weights)
-weights = [w / total for w in weights]
-
-# --- Ensemble Model ---
-ensemble = VotingClassifier(
-    estimators=[('RF', rf), ('GB', gb), ('ADA', ada), ('LR', lr)],
-    voting='soft',
-    weights=weights
-)
-
-# --- Train ensemble ---
 ensemble.fit(X_train_scaled, y_train)
-
 
 # ─── Shared Plotly theme ──────────────────────────────────────────────────────
 PLOT_LAYOUT = dict(
