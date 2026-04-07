@@ -392,7 +392,14 @@ def load_and_preprocess_data(ticker, days):
     df['BB_Lower'] = df['BB_MA'] - (df['BB_std'] * 2)
 
     # Target
-    df['Target'] = np.where(df['Close'].shift(-1) > df['Close'], 1, 0)
+    df['Price_Change'] = (
+    0.2 * ((df['Open'].shift(-1) - df['Open']) / df['Open']) +
+    0.4 * ((df['Close'].shift(-1) - df['Close']) / df['Close']) +
+    0.2 * ((df['High'].shift(-1) - df['High']) / df['High']) +
+    0.2 * ((df['Low'].shift(-1) - df['Low']) / df['Low'])
+)
+
+df['Target'] = np.where(df['Price_Change'] > 0.015, 1, 0)
 
     return df.dropna(), symbol
 
