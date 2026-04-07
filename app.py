@@ -399,9 +399,9 @@ def load_and_preprocess_data(ticker, days):
     0.2 * ((df['Low'].shift(-1) - df['Low']) / df['Low'])
 )
 
-df['Target'] = np.where(df['Price_Change'] > 0.015, 1, 0)
+    df['Target'] = np.where(df['Price_Change'] > 0.015, 1, 0)
 
-return df.dropna(), symbol
+    return df.dropna(), symbol
 
 
 # ─── Header ───────────────────────────────────────────────────────────────────
