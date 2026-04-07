@@ -399,7 +399,7 @@ def load_and_preprocess_data(ticker, days):
     0.2 * ((df['Low'].shift(-1) - df['Low']) / df['Low'])
 )
 
-    df['Target'] = np.where(df['Price_Change'] > 0.01, 1, 0)
+    df['Target'] = np.where(df['Price_Change'] > 0.001, 1, 0)
 
     return df.dropna(), symbol
 
@@ -451,20 +451,20 @@ X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
 X_scaled = scaler.transform(X)
 
-# --- Models (with balancing where possible) ---
-rf  = RandomForestClassifier(n_estimators=100, random_state=42, class_weight='balanced')
+# --- Models ---
+rf  = RandomForestClassifier(n_estimators=100, random_state=42)
 gb  = GradientBoostingClassifier(n_estimators=100, random_state=42)
 ada = AdaBoostClassifier(n_estimators=100, random_state=42)
-lr  = LogisticRegression(random_state=42, max_iter=1000, class_weight='balanced')
+lr  = LogisticRegression(random_state=42, max_iter=1000)
 
-# --- Ensemble (FIXED weights for stability) ---
+# --- Ensemble (original simple version) ---
 ensemble = VotingClassifier(
     estimators=[('RF', rf), ('GB', gb), ('ADA', ada), ('LR', lr)],
     voting='soft',
-    weights=[2, 3, 2, 2]   # stable + slightly favor GB
+    weights=[2, 3, 1, 1]
 )
 
-# --- Train models ---
+# --- Train ---
 rf.fit(X_train_scaled, y_train)
 gb.fit(X_train_scaled, y_train)
 ada.fit(X_train_scaled, y_train)
