@@ -401,7 +401,7 @@ def load_and_preprocess_data(ticker, days):
 
 df['Target'] = np.where(df['Price_Change'] > 0.015, 1, 0)
 
-    return df.dropna(), symbol
+return df.dropna(), symbol
 
 
 # ─── Header ───────────────────────────────────────────────────────────────────
