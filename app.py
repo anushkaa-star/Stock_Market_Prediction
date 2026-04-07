@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
+from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
@@ -399,7 +400,7 @@ def load_and_preprocess_data(ticker, days):
     0.2 * ((df['Low'].shift(-1) - df['Low']) / df['Low'])
 )
 
-    df['Target'] = np.where(df['Price_Change'] > 0.001, 1, 0)
+    df['Target'] = np.where(df['Price_Change'] > 0.005, 1, 0)
 
     return df.dropna(), symbol
 
@@ -452,16 +453,16 @@ X_test_scaled = scaler.transform(X_test)
 X_scaled = scaler.transform(X)
 
 # --- Models ---
-rf  = RandomForestClassifier(n_estimators=100, random_state=42)
+rf  = RandomForestClassifier(n_estimators=100, random_state=42, class_weight='balanced')
 gb  = GradientBoostingClassifier(n_estimators=100, random_state=42)
 ada = AdaBoostClassifier(n_estimators=100, random_state=42)
-lr  = LogisticRegression(random_state=42, max_iter=1000)
+lr  = LogisticRegression(random_state=42, max_iter=1000, class_weight='balanced')
 
 # --- Ensemble (original simple version) ---
 ensemble = VotingClassifier(
     estimators=[('RF', rf), ('GB', gb), ('ADA', ada), ('LR', lr)],
     voting='soft',
-    weights=[2, 3, 1, 1]
+    weights=[2, 3, 2, 1]
 )
 
 # --- Train ---
@@ -558,6 +559,7 @@ with tab1:
 # ── Tab 2 ─────────────────────────────────────────────────────────────────────
 with tab2:
     prediction = ensemble.predict(X_scaled[-1].reshape(1, -1))[0]
+    prob = ensemble.predict_proba(X_scaled[-1].reshape(1, -1))[0][1]
     is_bull = prediction == 1
     card_cls = "bullish" if is_bull else "bearish"
     icon     = "↑" if is_bull else "↓"
@@ -680,6 +682,8 @@ with tab4:
 
     importances = rf.feature_importances_
     indices     = np.argsort(importances)
+    top_idx = np.argsort(importances)[-3:]
+    top_features = [features[i] for i in top_idx]
     bar_colors  = ['#e8c97d' if importances[i] == max(importances) else '#1e3a5f' for i in indices]
 
     fig_feat = go.Figure(go.Bar(
@@ -700,3 +704,4 @@ with tab4:
         yaxis=dict(gridcolor="rgba(0,0,0,0)", tickfont=dict(family="DM Mono, monospace", size=11, color="#8892a4")),
         margin=dict(l=0, r=60, t=10, b=10))
     st.plotly_chart(fig_feat, use_container_width=True)
+    st.markdown(f"**Top 3 Features:** {', '.join(top_features)}")
