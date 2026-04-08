@@ -560,6 +560,7 @@ with tab1:
 with tab2:
     prediction = ensemble.predict(X_scaled[-1].reshape(1, -1))[0]
     prob = ensemble.predict_proba(X_scaled[-1].reshape(1, -1))[0][1]
+    st.caption(f"Prediction based on last {days_history} days of data")
     is_bull = prediction == 1
     card_cls = "bullish" if is_bull else "bearish"
     icon     = "↑" if is_bull else "↓"
